@@ -7,7 +7,7 @@ from uuid import UUID
 
 from src.library_catalog.api.v1.schemas.book import BookCreate, BookUpdate, ShowBook
 from src.library_catalog.data.repositories.book_repository import BookRepository
-from src.library_catalog.external.openlibrary import OpenLibraryClient
+from src.library_catalog.domain.ports.book_enrichment_port import BookEnrichmentPort
 from src.library_catalog.domain.exceptions import (
     BookNotFoundException,
     BookAlreadyExistsException,
@@ -24,7 +24,7 @@ class BookService:
     def __init__(
         self,
         book_repository: BookRepository,
-        openlibrary_client: OpenLibraryClient,
+        openlibrary_client: BookEnrichmentPort,
     ):
         self.book_repo = book_repository
         self.ol_client = openlibrary_client
