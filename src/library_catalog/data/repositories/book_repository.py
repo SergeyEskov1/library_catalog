@@ -17,6 +17,28 @@ class BookRepository(BaseRepository[Book]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Book)
 
+    def _build_filter_conditions(
+        self,
+        title: str | None,
+        author: str | None,
+        genre: str | None,
+        year: int | None,
+        available: bool | None,
+    ) -> list:
+        """Собрать список WHERE-условий из переданных фильтров."""
+        conditions = []
+        if title is not None:
+            conditions.append(Book.title.ilike(f"%{title}%"))
+        if author is not None:
+            conditions.append(Book.author.ilike(f"%{author}%"))
+        if genre is not None:
+            conditions.append(Book.genre.ilike(f"%{genre}%"))
+        if year is not None:
+            conditions.append(Book.year == year)
+        if available is not None:
+            conditions.append(Book.available == available)
+        return conditions
+
     async def find_by_filters(
         self,
         title: str | None = None,
@@ -28,18 +50,8 @@ class BookRepository(BaseRepository[Book]):
         offset: int = 0,
     ) -> list[Book]:
         """Поиск книг с фильтрацией."""
-        query = select(Book)
-        if title is not None:
-            query = query.where(Book.title.ilike(f"%{title}%"))
-        if author is not None:
-            query = query.where(Book.author.ilike(f"%{author}%"))
-        if genre is not None:
-            query = query.where(Book.genre.ilike(f"%{genre}%"))
-        if year is not None:
-            query = query.where(Book.year == year)
-        if available is not None:
-            query = query.where(Book.available == available)
-        query = query.limit(limit).offset(offset)
+        conditions = self._build_filter_conditions(title, author, genre, year, available)
+        query = select(Book).where(*conditions).limit(limit).offset(offset)
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
@@ -59,18 +71,7 @@ class BookRepository(BaseRepository[Book]):
         available: bool | None = None,
     ) -> int:
         """Подсчитать количество книг по фильтрам."""
-        query = select(func.count()).select_from(Book)
-        if title is not None:
-            query = query.where(Book.title.ilike(f"%{title}%"))
-        if author is not None:
-            query = query.where(Book.author.ilike(f"%{author}%"))
-        if genre is not None:
-            query = query.where(Book.genre.ilike(f"%{genre}%"))
-        if year is not None:
-            query = query.where(Book.year == year)
-        if available is not None:
-            query = query.where(Book.available == available)
+        conditions = self._build_filter_conditions(title, author, genre, year, available)
+        query = select(func.count()).select_from(Book).where(*conditions)
         result = await self.session.execute(query)
         return result.scalar_one()
-
-
