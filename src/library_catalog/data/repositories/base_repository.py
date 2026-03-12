@@ -2,9 +2,10 @@
 Базовый репозиторий с Generic CRUD операциями.
 """
 
-from typing import Generic, TypeVar, Type
+from typing import Any, Generic, TypeVar, Type
 from uuid import UUID
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,11 +19,17 @@ class BaseRepository(Generic[T]):
         self.session = session
         self.model = model
 
-    async def create(self, **kwargs) -> T:
-        """Создать запись."""
-        instance = self.model(**kwargs)
+    async def create(self, data: BaseModel | None = None, **kwargs: Any) -> T:
+        """Создать запись.
+
+        Принимает Pydantic-схему (предпочтительно) или kwargs:
+            await repo.create(BookCreate(...))
+            await repo.create(title="...", author="...")  # устаревший вызов
+        """
+        fields = data.model_dump(exclude_unset=True) if data is not None else kwargs
+        instance = self.model(**fields)
         self.session.add(instance)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(instance)
         return instance
 
@@ -30,12 +37,18 @@ class BaseRepository(Generic[T]):
         """Получить по ID."""
         return await self.session.get(self.model, id)
 
-    async def update(self, id: UUID, **kwargs) -> T | None:
-        """Обновить запись."""
+    async def update(self, id: UUID, data: BaseModel | None = None, **kwargs: Any) -> T | None:
+        """Обновить запись.
+
+        Принимает Pydantic-схему (предпочтительно) или kwargs:
+            await repo.update(id, BookUpdate(...))
+            await repo.update(id, title="...")  # устаревший вызов
+        """
         instance = await self.get_by_id(id)
         if instance is None:
             return None
-        for key, value in kwargs.items():
+        fields = data.model_dump(exclude_unset=True) if data is not None else kwargs
+        for key, value in fields.items():
             setattr(instance, key, value)
         await self.session.commit()
         await self.session.refresh(instance)

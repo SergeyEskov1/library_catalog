@@ -9,9 +9,10 @@ from src.library_catalog.domain.exceptions import (
     OpenLibraryException,
     OpenLibraryTimeoutException,
 )
+from src.library_catalog.domain.ports.book_enrichment_port import BookEnrichmentPort
 
 
-class OpenLibraryClient(BaseApiClient):
+class OpenLibraryClient(BaseApiClient, BookEnrichmentPort):
     """Клиент для Open Library API."""
 
     def __init__(
@@ -87,9 +88,3 @@ class OpenLibraryClient(BaseApiClient):
             result["rating"] = ratings
 
         return result
-
-    def _get_cover_url(self, cover_id: int | None) -> str | None:
-        """Получить URL обложки."""
-        if not cover_id:
-            return None
-        return f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
