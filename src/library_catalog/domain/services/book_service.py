@@ -87,8 +87,12 @@ class BookService:
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ShowBook], int]:
-        """Поиск книг с фильтрацией и пагинацией."""
-        books = await self.book_repo.find_by_filters(
+        """Поиск книг с фильтрацией и пагинацией.
+
+        Использует единый запрос с window function вместо двух отдельных
+        (SELECT + SELECT COUNT), что сокращает round-trips к БД вдвое.
+        """
+        books, total = await self.book_repo.find_with_total(
             title=title,
             author=author,
             genre=genre,
@@ -96,14 +100,6 @@ class BookService:
             available=available,
             limit=limit,
             offset=offset,
-        )
-
-        total = await self.book_repo.count_by_filters(
-            title=title,
-            author=author,
-            genre=genre,
-            year=year,
-            available=available,
         )
 
         return BookMapper.to_show_books(books), total

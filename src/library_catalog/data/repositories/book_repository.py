@@ -55,6 +55,36 @@ class BookRepository(BaseRepository[Book]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def find_with_total(
+        self,
+        title: str | None = None,
+        author: str | None = None,
+        genre: str | None = None,
+        year: int | None = None,
+        available: bool | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[Book], int]:
+        """Поиск книг с подсчётом через window function — один запрос к БД.
+
+        Использует COUNT(*) OVER() вместо отдельного SELECT COUNT(*),
+        что вдвое сокращает количество round-trips при пагинации.
+        """
+        conditions = self._build_filter_conditions(title, author, genre, year, available)
+        query = (
+            select(Book, func.count().over().label("total_count"))
+            .where(*conditions)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.session.execute(query)
+        rows = result.all()
+        if not rows:
+            return [], 0
+        books = [row[0] for row in rows]
+        total = rows[0][1]
+        return books, total
+
     async def find_by_isbn(self, isbn: str) -> Book | None:
         """Найти книгу по ISBN."""
         result = await self.session.execute(
