@@ -1,7 +1,8 @@
 ﻿"""
 Доменная модель книги.
 """
-
+from src.library_catalog.api.v1.schemas.book import ShowBook
+from src.library_catalog.data.models.book import Book
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
@@ -50,3 +51,16 @@ class UpdateBookCommand:
     available: bool | None = None
     isbn: str | None = None
     description: str | None = None
+
+class BookMapper:
+    """Преобразование ORM Book → схема ShowBook."""
+
+    @staticmethod
+    def to_show_book(book: Book) -> ShowBook:
+        """Преобразовать одну книгу."""
+        return ShowBook.model_validate(book)
+
+    @staticmethod
+    def to_show_books(books: list[Book]) -> list[ShowBook]:
+        """Преобразовать список книг."""
+        return [ShowBook.model_validate(book) for book in books]
