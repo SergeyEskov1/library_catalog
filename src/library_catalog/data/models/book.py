@@ -3,7 +3,7 @@ ORM модель книги для библиотечного каталога.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -71,9 +71,9 @@ class Book(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=datetime.utcnow,
-        nullable=False,
+    DateTime(timezone=True),
+    default=lambda: datetime.now(timezone.utc),
+    server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
