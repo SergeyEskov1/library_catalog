@@ -7,12 +7,10 @@ from uuid import UUID
 
 from src.library_catalog.api.v1.schemas.book import BookCreate, BookUpdate, ShowBook
 from src.library_catalog.data.repositories.book_repository import BookRepository
-from src.library_catalog.external.openlibrary import OpenLibraryClient
+from src.library_catalog.domain.ports.book_enrichment_port import BookEnrichmentPort
 from src.library_catalog.domain.exceptions import (
     BookNotFoundException,
     BookAlreadyExistsException,
-    InvalidYearException,
-    InvalidPagesException,
     OpenLibraryException,
 )
 from src.library_catalog.domain.mappers.book_mapper import BookMapper
@@ -26,15 +24,13 @@ class BookService:
     def __init__(
         self,
         book_repository: BookRepository,
-        openlibrary_client: OpenLibraryClient,
+        openlibrary_client: BookEnrichmentPort,
     ):
         self.book_repo = book_repository
         self.ol_client = openlibrary_client
 
     async def create_book(self, book_data: BookCreate) -> ShowBook:
         """Создать новую книгу."""
-        self._validate_book_data(book_data)
-
         if book_data.isbn:
             existing = await self.book_repo.find_by_isbn(book_data.isbn)
             if existing:
@@ -68,11 +64,6 @@ class BookService:
         if existing is None:
             raise BookNotFoundException(book_id)
 
-        if book_data.year is not None:
-            self._validate_year(book_data.year)
-        if book_data.pages is not None:
-            self._validate_pages(book_data.pages)
-
         updated = await self.book_repo.update(
             book_id,
             **book_data.model_dump(exclude_unset=True)
@@ -96,8 +87,12 @@ class BookService:
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ShowBook], int]:
-        """Поиск книг с фильтрацией и пагинацией."""
-        books = await self.book_repo.find_by_filters(
+        """Поиск книг с фильтрацией и пагинацией.
+
+        Использует единый запрос с window function вместо двух отдельных
+        (SELECT + SELECT COUNT), что сокращает round-trips к БД вдвое.
+        """
+        books, total = await self.book_repo.find_with_total(
             title=title,
             author=author,
             genre=genre,
@@ -107,29 +102,7 @@ class BookService:
             offset=offset,
         )
 
-        total = await self.book_repo.count_by_filters(
-            title=title,
-            author=author,
-            genre=genre,
-            year=year,
-            available=available,
-        )
-
         return BookMapper.to_show_books(books), total
-
-    def _validate_book_data(self, data: BookCreate) -> None:
-        self._validate_year(data.year)
-        self._validate_pages(data.pages)
-
-    def _validate_year(self, year: int) -> None:
-        from datetime import datetime
-        current_year = datetime.now().year
-        if year < 1000 or year > current_year:
-            raise InvalidYearException(year)
-
-    def _validate_pages(self, pages: int) -> None:
-        if pages <= 0:
-            raise InvalidPagesException(pages)
 
     async def _enrich_book_data(self, book_data: BookCreate) -> dict | None:
         try:
