@@ -3,9 +3,9 @@ ORM модель книги для библиотечного каталога.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, func, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,7 +21,6 @@ class Book(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
-        index=True,
     )
     title: Mapped[str] = mapped_column(
         String(500),
@@ -68,20 +67,26 @@ class Book(Base):
         JSON,
         nullable=True,
     )
+    rating: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        comment="Средний рейтинг из Open Library",
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     def __repr__(self) -> str:
         return f"<Book(id={self.book_id}, title='{self.title}')>"
-

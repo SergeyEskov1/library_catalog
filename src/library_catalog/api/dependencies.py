@@ -1,8 +1,28 @@
 ﻿"""
 Dependency Injection контейнер для FastAPI.
+
+Стратегия кеширования:
+- get_openlibrary_client() — singleton: HTTP-клиент держит пул соединений,
+  пересоздавать на каждый запрос дорого. Используется functools.cache вместо
+  lru_cache для явного управления временем жизни через reset_clients().
+- get_book_repository()   — per-request: репозиторий привязан к сессии БД.
+- get_book_service()      — per-request: lightweight, singleton не нужен.
+
+Тестирование:
+  Для сброса кеша используйте reset_clients():
+
+      @pytest.fixture(autouse=True)
+      def clear_dependency_caches():
+          reset_clients()
+          yield
+          reset_clients()
+
+  Затем подменяйте через dependency_overrides:
+
+      app.dependency_overrides[get_openlibrary_client] = lambda: MockOpenLibraryClient()
 """
 
-from functools import lru_cache
+from functools import cache
 from typing import Annotated
 
 from fastapi import Depends
@@ -17,13 +37,21 @@ from src.library_catalog.external.openlibrary.client import OpenLibraryClient
 
 # ========== EXTERNAL CLIENTS ==========
 
-@lru_cache
+@cache
 def get_openlibrary_client() -> OpenLibraryClient:
-    """Singleton OpenLibraryClient."""
+    """Singleton OpenLibraryClient (cached via functools.cache).
+
+    Переиспользует пул TCP-соединений. Для сброса в тестах — reset_clients().
+    """
     return OpenLibraryClient(
         base_url=settings.openlibrary_base_url,
         timeout=settings.openlibrary_timeout,
     )
+
+
+def reset_clients() -> None:
+    """Сбросить все singleton-кеши. Вызывать в тестовых фикстурах."""
+    get_openlibrary_client.cache_clear()
 
 
 # ========== REPOSITORIES ==========

@@ -2,10 +2,12 @@
 Конфигурация приложения через pydantic-settings.
 """
 
-from functools import lru_cache
-from typing import Literal
+from __future__ import annotations
 
-from pydantic import PostgresDsn
+from functools import lru_cache
+from typing import Any, Literal
+
+from pydantic import PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,8 +29,23 @@ class Settings(BaseSettings):
     # Логирование
     log_level: str = "INFO"
 
-    # CORS
-    cors_origins: list[str] = ["*"]
+    # CORS — обязательно задать явно, дефолт намеренно отсутствует.
+    # В продакшне "*" запрещён — сервис не запустится.
+    # Пример для .env: CORS_ORIGINS='["https://example.com"]'
+    cors_origins: list[str]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def cors_origins_must_be_explicit_in_production(
+        cls, v: list[str], info: Any
+    ) -> list[str]:
+        values = info.data
+        if values.get("environment") == "production" and "*" in v:
+            raise ValueError(
+                'cors_origins cannot contain "*" in production. '
+                "Set explicit origins in CORS_ORIGINS env variable."
+            )
+        return v
 
     # OpenLibrary
     openlibrary_base_url: str = "https://openlibrary.org"
