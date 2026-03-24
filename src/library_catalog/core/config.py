@@ -1,4 +1,4 @@
-﻿"""
+"""
 Конфигурация приложения через pydantic-settings.
 """
 
@@ -10,6 +10,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """"""
+
+    environment: Literal["production", "development"] = "production"
     # Основные настройки
     app_name: str = "Library Catalog API"
     environment: Literal["development", "staging", "production"] = "development"
