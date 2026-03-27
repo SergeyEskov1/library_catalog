@@ -12,6 +12,7 @@ from src.library_catalog.core.database import dispose_engine
 from src.library_catalog.core.exceptions import register_exception_handlers
 from src.library_catalog.core.logging_config import setup_logging
 from src.library_catalog.api.v1.routers import books, health
+from src.library_catalog.api.dependencies import get_openlibrary_client
 
 
 @asynccontextmanager
@@ -19,6 +20,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     print("Application started")
     yield
+    client = get_openlibrary_client()
+    await client.close()
     await dispose_engine()
     print("Application stopped")
 
