@@ -67,13 +67,13 @@ class BaseApiClient(ABC):
                 response.raise_for_status()
                 return response.json()
 
-            except httpx.TimeoutException:
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError):
                 if attempt == self.retries - 1:
-                    self.logger.error(f"Timeout after {self.retries} attempts")
+                    self.logger.error(f"Request failed after {self.retries} attempts")
                     raise
 
                 wait_time = self.backoff * (2 ** attempt)
-                self.logger.warning(f"Timeout, retrying in {wait_time}s...")
+                self.logger.warning(f"Request error, retrying in {wait_time}s...")
                 await asyncio.sleep(wait_time)
 
             except httpx.HTTPStatusError as e:
