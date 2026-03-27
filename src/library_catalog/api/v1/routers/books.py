@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, status
 from src.library_catalog.api.v1.schemas.book import BookCreate, BookUpdate, ShowBook
 from src.library_catalog.api.v1.schemas.common import PaginatedResponse, PaginationParams
 from src.library_catalog.api.dependencies import BookServiceDep
+from src.library_catalog.domain.mappers.book_mapper import BookMapper
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/books", tags=["Books"])
 )
 async def create_book(book_data: BookCreate, service: BookServiceDep):
     """Создать новую книгу с обогащением из Open Library."""
-    return await service.create_book(book_data)
+    command = BookMapper.to_create_command(book_data)
+    book = await service.create_book(command)
+    return BookMapper.to_show_book(book)
 
 
 @router.get(
@@ -49,7 +52,8 @@ async def get_books(
         limit=pagination.limit,
         offset=pagination.offset,
     )
-    return PaginatedResponse.create(books, total, pagination)
+    show_books = BookMapper.to_show_books(books)
+    return PaginatedResponse.create(show_books, total, pagination)
 
 
 @router.get(
@@ -59,7 +63,8 @@ async def get_books(
 )
 async def get_book(book_id: UUID, service: BookServiceDep):
     """Получить книгу по ID."""
-    return await service.get_book(book_id)
+    book = await service.get_book(book_id)
+    return BookMapper.to_show_book(book)
 
 
 @router.patch(
@@ -69,7 +74,9 @@ async def get_book(book_id: UUID, service: BookServiceDep):
 )
 async def update_book(book_id: UUID, book_data: BookUpdate, service: BookServiceDep):
     """Частичное обновление книги."""
-    return await service.update_book(book_id, book_data)
+    command = BookMapper.to_update_command(book_data)
+    book = await service.update_book(book_id, command)
+    return BookMapper.to_show_book(book)
 
 
 @router.delete(
