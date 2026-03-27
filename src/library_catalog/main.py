@@ -2,25 +2,33 @@
 Library Catalog API - Точка входа приложения.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.library_catalog.core.config import settings
-from src.library_catalog.core.database import dispose_engine
+from src.library_catalog.core.database import dispose_engine, init_db
 from src.library_catalog.core.exceptions import register_exception_handlers
 from src.library_catalog.core.logging_config import setup_logging
 from src.library_catalog.api.v1.routers import books, health
+from src.library_catalog.api.dependencies import get_openlibrary_client, reset_clients
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
-    print("Application started")
+    await init_db()
+    logger.info("Application started")
     yield
+    client = get_openlibrary_client()
+    await client.close()
+    reset_clients()
     await dispose_engine()
-    print("Application stopped")
+    logger.info("Application stopped")
 
 
 app = FastAPI(

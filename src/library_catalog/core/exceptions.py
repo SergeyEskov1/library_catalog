@@ -7,9 +7,13 @@ from fastapi.responses import JSONResponse
 
 
 class AppException(Exception):
-    """Базовое исключение приложения."""
+    """Базовое исключение приложения.
 
-    def __init__(self, message: str, status_code: int = 400):
+    status_code обязателен — базовый класс не предполагает конкретный HTTP-код.
+    Каждый наследник задаёт его явно.
+    """
+
+    def __init__(self, message: str, status_code: int):
         self.message = message
         self.status_code = status_code
         super().__init__(self.message)
