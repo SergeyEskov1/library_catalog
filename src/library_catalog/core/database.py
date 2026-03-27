@@ -42,9 +42,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Инициализация подключения к БД при старте."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Проверка подключения к БД при старте.
+
+    Миграции применяются через Alembic (alembic upgrade head).
+    create_all здесь намеренно не используется — он не управляет
+    миграциями и не подходит для продакшна.
+    """
+    async with engine.connect() as conn:
+        from sqlalchemy import text
+        await conn.execute(text("SELECT 1"))
 
 
 async def check_db_connection() -> bool:
@@ -61,4 +67,3 @@ async def check_db_connection() -> bool:
 async def dispose_engine() -> None:
     """Корректное закрытие соединений."""
     await engine.dispose()
-
