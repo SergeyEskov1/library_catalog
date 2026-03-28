@@ -19,10 +19,9 @@ class BaseRepository(Generic[T]):
         self.model = model
 
     async def create(self, **kwargs) -> T:
-        """Создать запись."""
         instance = self.model(**kwargs)
         self.session.add(instance)
-        await self.session.commit()
+        await self.session.flush()  # отправляет в БД без commit
         await self.session.refresh(instance)
         return instance
 
