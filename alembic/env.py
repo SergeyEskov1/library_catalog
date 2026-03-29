@@ -15,7 +15,7 @@ config = context.config
 
 config.set_main_option(
     "sqlalchemy.url",
-    str(settings.database_url).replace("+asyncpg", "")
+    str(settings.database_url).replace("+asyncpg", "+psycopg")
 )
 
 if config.config_file_name is not None:
