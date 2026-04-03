@@ -5,7 +5,7 @@ Pydantic схемы для книг.
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class BookBase(BaseModel):
@@ -13,9 +13,18 @@ class BookBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=300)
-    year: int = Field(..., ge=1000, le=2100)
+    year: int = Field(..., ge=1000)
     genre: str = Field(..., min_length=1, max_length=100)
     pages: int = Field(..., gt=0)
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int) -> int:
+        from datetime import datetime
+        current_year = datetime.now().year
+        if v > current_year:
+            raise ValueError(f"Year must not exceed current year ({current_year})")
+        return v
 
 
 class BookCreate(BookBase):
@@ -58,12 +67,23 @@ class BookUpdate(BaseModel):
 
     title: str | None = Field(None, min_length=1, max_length=500)
     author: str | None = Field(None, min_length=1, max_length=300)
-    year: int | None = Field(None, ge=1000, le=2100)
+    year: int | None = Field(None, ge=1000)
     genre: str | None = Field(None, min_length=1, max_length=100)
     pages: int | None = Field(None, gt=0)
     available: bool | None = None
     isbn: str | None = None
     description: str | None = None
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int | None) -> int | None:
+        if v is None:
+            return v
+        from datetime import datetime
+        current_year = datetime.now().year
+        if v > current_year:
+            raise ValueError(f"Year must not exceed current year ({current_year})")
+        return v
 
 
 class ShowBook(BookBase):

@@ -9,9 +9,10 @@ from src.library_catalog.domain.exceptions import (
     OpenLibraryException,
     OpenLibraryTimeoutException,
 )
+from src.library_catalog.domain.ports.book_enrichment_port import BookEnrichmentPort
 
 
-class OpenLibraryClient(BaseApiClient):
+class OpenLibraryClient(BaseApiClient, BookEnrichmentPort):
     """Клиент для Open Library API."""
 
     def __init__(
